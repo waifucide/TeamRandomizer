@@ -1,4 +1,4 @@
-<!DOC<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -74,6 +74,12 @@
             background-color: #ffcccc;
         }
 
+        .note {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
         .team-container {
             display: flex;
             justify-content: center;
@@ -112,7 +118,9 @@
     <h2>✨ Team Randomizer ✨</h2>
     <label for="teamSize">Number of Players per Team:</label>
     <input type="number" id="teamSize" min="1">
+    <label><input type="checkbox" id="oddPlayer" onchange="updateNote()"> Allow Odd Number of Players</label>
     <button onclick="generateRows()">Generate Players</button>
+    <div class="note" id="plusNote">Plus represents players you don't want together in a team.</div>
 
     <div id="playersContainer"></div>
     <button onclick="generateTeams()">Generate Teams</button>
@@ -129,13 +137,22 @@
     <script>
         let oppositePairs = [];
 
+        function updateNote() {
+            const note = document.getElementById('plusNote');
+            const allowOdd = document.getElementById('oddPlayer').checked;
+            note.textContent = allowOdd ? 'Plus represents players you want together in a team.' : 'Plus represents players you don\'t want together in a team.';
+        }
+
         function generateRows() {
             const container = document.getElementById('playersContainer');
             const teamSize = parseInt(document.getElementById('teamSize').value);
+            const allowOdd = document.getElementById('oddPlayer').checked;
             container.innerHTML = '';
             oppositePairs = [];
 
-            for (let i = 0; i < teamSize * 2; i++) {
+            const totalPlayers = allowOdd ? teamSize : teamSize * 2;
+
+            for (let i = 0; i < totalPlayers; i++) {
                 const row = document.createElement('div');
                 row.className = 'player-row';
 
@@ -157,13 +174,7 @@
         }
 
         function updateOppositePairs() {
-            const inputs = document.querySelectorAll('.player-row input.opposite');
-            oppositePairs = [];
-            inputs.forEach(input => {
-                if (!oppositePairs.includes(input.value) && input.value !== '') {
-                    oppositePairs.push(input.value);
-                }
-            });
+            oppositePairs = Array.from(document.querySelectorAll('.player-row input.opposite')).map(input => input.value);
         }
 
         function shuffleArray(array) {
@@ -174,45 +185,28 @@
         }
 
         function generateTeams() {
-            const inputs = Array.from(document.querySelectorAll('.player-row input'));
-            const players = inputs.map(input => input.value).filter(name => name.trim() !== '');
+            const players = Array.from(document.querySelectorAll('.player-row input')).map(input => input.value).filter(name => name);
+            const allowOdd = document.getElementById('oddPlayer').checked;
 
-            if (players.length % 2 !== 0) {
-                alert("Please enter an even number of player names.");
-                return;
-            }
+            shuffleArray(players);
 
             let teamA = [], teamB = [];
-            let attempts = 0;
 
-            while (attempts < 1000) {
-                let shuffled = [...players];
-                shuffleArray(shuffled);
-                teamA = shuffled.slice(0, shuffled.length / 2);
-                teamB = shuffled.slice(shuffled.length / 2);
-
-                if (validateOpposites(teamA, teamB)) break;
-                attempts++;
-            }
-
-            if (attempts === 1000) {
-                alert("Couldn't generate teams with the given constraints.");
-                return;
+            if (allowOdd) {
+                teamA = oppositePairs.concat(players.filter(p => !oppositePairs.includes(p)).slice(0, Math.ceil(players.length / 2) - oppositePairs.length));
+                teamB = players.filter(p => !teamA.includes(p));
+            } else {
+                for (let i = 0; i < players.length; i++) {
+                    if (oppositePairs.includes(players[i])) {
+                        (teamA.includes(players[i - 1]) ? teamB : teamA).push(players[i]);
+                    } else {
+                        (teamA.length <= teamB.length ? teamA : teamB).push(players[i]);
+                    }
+                }
             }
 
             document.getElementById('teamA').innerHTML = `<h3>Team A</h3>${teamA.map(name => `<p>${name}</p>`).join('')}`;
             document.getElementById('teamB').innerHTML = `<h3>Team B</h3>${teamB.map(name => `<p>${name}</p>`).join('')}`;
-        }
-
-        function validateOpposites(teamA, teamB) {
-            for (let i = 0; i < oppositePairs.length; i += 2) {
-                const p1 = oppositePairs[i];
-                const p2 = oppositePairs[i + 1];
-                if ((teamA.includes(p1) && teamA.includes(p2)) || (teamB.includes(p1) && teamB.includes(p2))) {
-                    return false;
-                }
-            }
-            return true;
         }
     </script>
 </body>
